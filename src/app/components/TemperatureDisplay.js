@@ -7,7 +7,7 @@ export default function TemperatureDisplay() {
   const [temperature, setTemperature] = useState(null);
   const [timestamp, setTimestamp] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(Date.now());
-  const [isConnected, setIsConnected] = useState(true); // To track board connection status
+  const [isDataReceived, setIsDataReceived] = useState(false); // Track if data is received
 
   useEffect(() => {
     const tempRef = ref(database, 'sensor/data');
@@ -19,24 +19,24 @@ export default function TemperatureDisplay() {
         const sortedData = Object.values(data).sort(
           (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
         );
-        const latestEntry = sortedData[0]; // Get the most recent entry
+        const latestEntry = sortedData[0];  // Get the most recent entry
 
         setTemperature(latestEntry.temperature);
         setTimestamp(latestEntry.timestamp);
-        setLastUpdate(Date.now()); // Update the lastUpdate time
-        setIsConnected(true); // Reset connection status on new data
+        setLastUpdate(Date.now()); // Update the lastUpdate time to current time
+        setIsDataReceived(true); // Mark that data is being received
       }
     });
 
-    // Check if there's no update within 5 seconds
-    const checkConnection = setInterval(() => {
-      if (Date.now() - lastUpdate > 5000) {
-        setIsConnected(false); // Mark the board as disconnected
+    // Check if no data has been received for more than 5 seconds
+    const interval = setInterval(() => {
+      if (isDataReceived && Date.now() - lastUpdate > 5000) {
+        setIsDataReceived(false); // If more than 5 seconds passed without data, mark as disconnected
       }
     }, 1000); // Check every second
 
-    return () => clearInterval(checkConnection); // Cleanup on component unmount
-  }, [lastUpdate]);
+    return () => clearInterval(interval); // Cleanup on component unmount
+  }, [lastUpdate, isDataReceived]);
 
   // Format date and time
   const formattedDate = timestamp ? format(new Date(timestamp), 'dd-MM-yyyy') : 'N/A';
@@ -58,21 +58,19 @@ export default function TemperatureDisplay() {
       <p className="text-sm text-gray-500">
         Last Updated Date: {formattedDate}
       </p>
-      
-
       <p className="text-sm text-gray-500">
         Last Updated Time: {formattedTime}
       </p>
       <p className="text-sm text-gray-500">
         Location: CPI, The Coxon Building, John Walker Road, Sedgefield, United Kingdom, TS21 3FE.
       </p>
-      {/* Updating Message */}
-      <p className="text-sm text-sky-400 mt-1">
-        Board is sending data in every 5 seconds...
-      </p>
 
-      {/* Connection Status */}
-      {!isConnected && (
+      {/* Display Connection Status */}
+      {isDataReceived ? (
+        <p className="text-sm text-sky-400 mt-1">
+         If board is connected you can see the changes after every 5 seconds...
+        </p>
+      ) : (
         <p className="text-sm text-red-500 mt-1">
           Board is disconnected!
         </p>
